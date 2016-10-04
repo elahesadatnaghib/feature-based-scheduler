@@ -19,17 +19,17 @@ Site.horizon    = 0.
 
 preferences     = [1,1,10,2,3,10] # mission objective
 # objective function
-#objective = self.preferences[0] * cost_avg * -1 +
-#            self.preferences[1] * slew_avg * -1 +
-#            self.preferences[2] * alt_avg  *  1 +
-#            self.preferences[3] * N_triple *  1 +
-#            self.preferences[4] * N_double *  1 +
-#            self.preferences[5] * N_single * -1
+#objective = preferences[0] * cost_avg * -1 +
+#            preferences[1] * slew_avg * -1 +
+#            preferences[2] * alt_avg  *  1 +
+#            preferences[3] * N_triple *  1 +
+#            preferences[4] * N_double *  1 +
+#            preferences[5] * N_single * -1
 
 #F_weight : controller parameters
 #F_weight        = np.array([ 1, 1, 1, 1, 1, 1, 1])  # all one
 #F_weight        = np.array([2, 1, 1, 5, 3, 1, 2])   # educated guess
-F_weight        = np.array([ 2.90846782,  2.15963323,  9.48473502,  7.74506438,  4.69452669,  5.33303562, 9.55935917]) * -1   # another learning result
+F_weight        = np.array([ 2.90846782,  2.15963323,  9.48473502,  7.74506438,  4.69452669,  5.33303562, 9.55935917]) * -1   # learning result
 
 # F1: slew time cost 0~2
 # F2: night urgency -1~1
