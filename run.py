@@ -19,16 +19,16 @@ Site.horizon    = 0.
 
 preferences     = [1,1,10,2,3,10] # mission objective
 # objective function
-#objective = preferences[0] * cost_avg * -1 +
-#            preferences[1] * slew_avg * -1 +
-#            preferences[2] * alt_avg  *  1 +
-#            preferences[3] * N_triple *  1 +
-#            preferences[4] * N_double *  1 +
-#            preferences[5] * N_single * -1
+#objective = preferences[0] * average cost * -1 +
+#            preferences[1] * average slew time * -1 +
+#            preferences[2] * average altitude  *  1 +
+#            preferences[3] * No. of triple visits *  1 +
+#            preferences[4] * No. of double visits *  1 +
+#            preferences[5] * No. of single visits * -1
 
 #F_weight : controller parameters
-#F_weight        = np.array([ 1, 1, 1, 1, 1, 1, 1])  # all one
-#F_weight        = np.array([2, 1, 1, 5, 3, 1, 2])   # educated guess
+#F_weight        = np.array([ 1, 1, 1, 1, 1, 1, 1]) * -1  # all one
+#F_weight        = np.array([2, 1, 1, 5, 3, 1, 2])  * -1  # educated guess
 F_weight        = np.array([ 2.90846782,  2.15963323,  9.48473502,  7.74506438,  4.69452669,  5.33303562, 9.55935917]) * -1   # learning result
 
 # F1: slew time cost 0~2
@@ -39,6 +39,7 @@ F_weight        = np.array([ 2.90846782,  2.15963323,  9.48473502,  7.74506438, 
 # F6: co-added depth cost 0~1
 # F7: normalized brightness 0~1
 
+# immediate reward reward = F_weight[0] * F1 + F_weight[1] * F2 + F_weight[2] * F3 + F_weight[3] * F4 + F_weight[4] * F5 + F_weight[5] * F6 + F_weight[6] * F7
 s = time.time()
 
 n_nights = 10 # number of the nights to be scheduled starting from 1st Sep. 2016
