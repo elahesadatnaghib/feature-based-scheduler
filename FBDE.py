@@ -127,6 +127,8 @@ class Scheduler(Data):
             next_field_index, self.minimum_cost = decision_fcn(all_costs, feasibility_idx)
             self.next_field = self.fields[next_field_index]
             dt = self.next_field.slew_t_to + self.exposure_t
+            if len(feasibility_idx) <= 10:
+                print(len(feasibility_idx))
             self.clock(dt)
             # update next field visit variables
             self.next_field.update_visit_var(self.__t)
@@ -242,7 +244,7 @@ class Scheduler(Data):
 
     # Feature calculation
     def calculate_f1(self, id):     # slew time
-        return self.slew_t[id -1, int(self.tonight_telescope.state.id) -1]
+        return self.slew_t[int(id -1), int(self.tonight_telescope.state.id) -1]
 
     def calculate_f2(self, t_last_v, t_last_v_last):# time since last visit
         if t_last_v_last != inf:
@@ -296,6 +298,7 @@ class Scheduler(Data):
         t_since_last_v_ton, t_since_last_v_last = self.calculate_f2(t_last_visit, t_last_v_last)
         alt            = self.calculate_f3(any_next_state.id)
         current_field  = self.tonight_telescope.state.id
+        slew_t         = self.calculate_f1(any_next_state.id)
         if rise_t != 0 and (any_next_state.rise_t > self.__t or any_next_state.set_t < self.__t):
             return False
         if rise_t == 0 and alt < np.pi/4:
@@ -306,7 +309,8 @@ class Scheduler(Data):
             return False
         if current_field == any_next_state.id:
             return False
-
+        if slew_t > 20 *ephem.second and t_since_last_v_ton != inf:
+            return False
         any_next_state.set_hard_var(t_since_last_v_ton, t_since_last_v_last, alt)
         return True
 
@@ -368,9 +372,9 @@ class Scheduler(Data):
 
     def cum_reward(self):
 
-        cost_sum = 0#np.sum(self.__NightOutput[0:self.__step]['Alt'])
-        slew_sum = 0#np.sum(self.__NightOutput[0:self.__step]['Slew_t'])
-        alt_sum  = 0#np.sum(self.__NightOutput[0:self.__step]['Alt'])
+        cost_sum = 0 #np.sum(self.__NightOutput[0:self.__step]['Alt'])
+        slew_sum = 0 #np.sum(self.__NightOutput[0:self.__step]['Slew_t'])
+        alt_sum  = 0 #np.sum(self.__NightOutput[0:self.__step]['Alt'])
         # non-linear
         u, c           = np.unique(self.__NightOutput['Field_id'], return_counts=True)
         unique, counts = np.unique(c, return_counts=True)
@@ -549,8 +553,6 @@ def calculate_F2(t_since_last_v_ton):   # night urgency -1~1
         return 5
     else:
         return 5 * (1 - np.exp(-1* t_since_last_v_ton / 20 * ephem.minute))
-
-
 
 def calculate_F3(t_since_last_v_last):  # overall urgency 0~1
     if t_since_last_v_last == inf:
