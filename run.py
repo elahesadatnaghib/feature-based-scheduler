@@ -73,7 +73,7 @@ for i in range(1, n_nights+1):
     print('\nData generated in {} sec'.format(t1 - s))
 
     # create scheduler
-    scheduler = FBDE.Scheduler(Date, Site, F_weight, preferences)
+    scheduler = FBDE.Scheduler(Date, Site, F_weight, preferences, micro_train = False)
     t2 = time.time()
     print('\nData imported in {} sec'.format(t2 - t1))
 
