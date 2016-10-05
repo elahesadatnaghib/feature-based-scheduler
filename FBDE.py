@@ -242,7 +242,7 @@ class Scheduler(Data):
 
     # Feature calculation
     def calculate_f1(self, id):     # slew time
-        return self.slew_t[id -1, int(self.tonight_telescope.state.id) -1]
+        return self.slew_t[int(id -1), int(self.tonight_telescope.state.id) -1]
 
     def calculate_f2(self, t_last_v, t_last_v_last):# time since last visit
         if t_last_v_last != inf:
@@ -573,7 +573,9 @@ def calculate_F7(normalized_bri):       # normalized brightness 0~1
 # cost function
 
 def cost_fcn(weight, F):
-    return np.dot(weight, F)
+    temp = np.insert(F, 0, 1)
+    mat_F = np.outer(temp, F)
+    return np.sum(np.multiply(weight, mat_F))
 
 
 def calculate_cost(possible_next_field, tonight_telescope, f_weight):
