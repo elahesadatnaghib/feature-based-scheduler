@@ -49,7 +49,7 @@ F_weight        = np.reshape(np.array([3.82825499,  5.0246024,   0.39586326,  5.
 # immediate reward reward = F_weight[0] * F1 + F_weight[1] * F2 + F_weight[2] * F3 + F_weight[3] * F4 + F_weight[4] * F5 + F_weight[5] * F6 + F_weight[6] * F7
 s = time.time()
 
-n_nights = 10 # number of the nights to be scheduled starting from 1st Sep. 2016
+n_nights = 1 # number of the nights to be scheduled starting from 1st Sep. 2016
 
 
 # Delete previous database
