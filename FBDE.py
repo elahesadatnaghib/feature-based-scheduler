@@ -32,9 +32,9 @@ class Data(object):
         self.amass_cstr = np.loadtxt("NightDataInLIS/AirmassConstraints{}.lis".format(int(ephem.julian_date(self.Date))), unpack = True)
         self.all_n_tot_visits = np.loadtxt("NightDataInLIS/tot_N_visit{}.lis".format(int(ephem.julian_date(self.Date))), dtype = "i4", unpack = True)
         self.t_last_v_last= np.loadtxt("NightDataInLIS/t_last_visit{}.lis".format(int(ephem.julian_date(self.Date))), unpack = True)
-        self.coad_depth   = self.all_n_tot_visits / (np.max(self.all_n_tot_visits) +1 ) #!!!!! temporarily!!!!!!!!
-        self.vis_of_year  = np.zeros(len(self.all_fields[0]))   #!!!!! temporarily!!!!!!!!
-        self.sci_prog     = np.zeros(len(self.all_fields[0]), dtype= 'int')   #!!!!! temporarily!!!!!!!!
+        self.coad_depth   = self.all_n_tot_visits / (np.max(self.all_n_tot_visits) +1 ) #!!!!! temporarily!!!!!!!! # TODO Add coadded depth module instead of visit count
+        self.vis_of_year  = np.zeros(len(self.all_fields[0]))   #!!!!! temporarily!!!!!!!! # TODO Visibility of the year is currently all zero
+        self.sci_prog     = np.zeros(len(self.all_fields[0]), dtype= 'int')   #!!!!! temporarily!!!!!!!! # TODO Science program is not considered yet
         self.moon_sep     = np.loadtxt("NightDataInLIS/MoonSeps{}.lis".format(int(ephem.julian_date(self.Date))), unpack = True)
         # n_fields by n_fields symmetric matrix, slew time from field i to j
         self.slew_t     = np.loadtxt("NightDataInLIS/Constants/slewMatrix.dat", unpack = True) * ephem.second
@@ -48,7 +48,7 @@ class Data(object):
         ''' Unpredictable data '''
         self.sky_brightness = np.zeros(len(self.all_fields[0]), dtype= 'int')   #!!!!! temporarily!!!!!!!!    # current sky brightness
         self.temp_coverage  = np.zeros(len(self.all_fields[0]), dtype= 'int')   #!!!!! temporarily!!!!!!!!    # temporary 0/1 coverage of the sky including clouds
-
+        # TODO Add update module for live sky brightness and temporary coverage updates
         #print('\nData imported correctly') # data validity check should be added
 
 
@@ -130,7 +130,7 @@ class Scheduler(Data):
             self.clock(dt)
             # update next field visit variables
             self.next_field.update_visit_var(self.__t)
-            self.tonight_telescope.update(self.__t, self.__n, self.__step, self.next_field, 0) # filter is zero temporarily
+            self.tonight_telescope.update(self.__t, self.__n, self.__step, self.next_field, 0) # TODO Filter change decision making procedure (maybe as second stage decision)
             self.tonight_telescope.watch_fcn()
             self.record_visit()
 
@@ -220,7 +220,7 @@ class Scheduler(Data):
             field.set_variables(alt, ha, cov, bri, t_to_invis, t_since_last_v_ton, t_since_last_v_last, slew_t_to)
             field.set_visit_var(0, t_last_visit)
 
-    def init_state(self, state, manual = False):        # To be corrected for feasibility of the initial field
+    def init_state(self, state, manual = False):        # TODO Feasibility of the initial field needs to be checked
         if manual:
             self.init_id = state.id
             return state
