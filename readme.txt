@@ -1,4 +1,4 @@
-# Feature-base telescope scheduler
+
 
 To schedule a number of nights, please use “run.py”.
 
