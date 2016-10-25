@@ -7,6 +7,7 @@ import NightDataGenerator as DataGen
 import FBDE
 import MyDE
 import time
+import os
 
 
 
@@ -51,10 +52,16 @@ class Training():
         return -1 * self.scheduler.performance()
 
 
+
+# Delete previous database
+try:
+    os.remove('FBDE.db')
+except:
+    pass
 s       = time.time()
 train   = Training(Date, Site, preferences)
 
-N_p     = 90
+N_p     = 50
 F       = 0.8
 Cr      = 0.8
 maxIter = 20
