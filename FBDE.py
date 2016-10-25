@@ -45,18 +45,6 @@ class Data(object):
         self.t_end        = self.time_slots[self.n_time_slots -1]
         self.n_start      = find_n(self.t_start, self.t_start, self.t_end, self.n_time_slots, self.time_slots)
 
-        ''' Unpredictable data '''
-        self.sky_brightness = np.zeros(len(self.all_fields[0]), dtype= 'int')   #!!!!! temporarily!!!!!!!!    # current sky brightness
-        self.temp_coverage  = np.zeros(len(self.all_fields[0]), dtype= 'int')   #!!!!! temporarily!!!!!!!!    # temporary 0/1 coverage of the sky including clouds
-        # TODO Add update module for live sky brightness and temporary coverage updates
-        #print('\nData imported correctly') # data validity check should be added
-
-
-    def update_sky_brightness(self, sky_brightness):     # SkyB is a 1 by n_fields vector, reflects the sky brightness at each field
-        self.sky_brightness = sky_brightness            #must be fed into the algorithm in real time or as prediction in training
-
-    def update_temp_coverage(self, temp_coverage):   # SkyB is a 1 by n_fields vector, reflects the sky brightness at each field
-        self.temp_coverage = temp_coverage          #must be fed into the algorithm in real time or as prediction in training
 
 
 class Scheduler(Data):
@@ -101,6 +89,7 @@ class Scheduler(Data):
         self.__t = None
         self.__n = None
         self.__step = None
+        self.__n_ch = None
 
         #other
         self.init_id = None
@@ -130,7 +119,7 @@ class Scheduler(Data):
             self.clock(dt)
             # update next field visit variables
             self.next_field.update_visit_var(self.__t)
-            self.tonight_telescope.update(self.__t, self.__n, self.__step, self.next_field, 0) # TODO Filter change decision making procedure (maybe as second stage decision)
+            self.tonight_telescope.update(self.__t, self.__n, self.__n_ch, self.__step, self.next_field, 0) # TODO Filter change decision making procedure (maybe as second stage decision)
             self.tonight_telescope.watch_fcn()
             self.record_visit()
 
@@ -154,7 +143,7 @@ class Scheduler(Data):
 
         self.record_night()
 
-    def update_field(self,field):
+    def update_field(self, field):
         id = field.id
         slew_t_to = self.calculate_f1(id)
         ha    = self.calculate_f4(id)
@@ -171,7 +160,9 @@ class Scheduler(Data):
         else:
             self.__t += dt
             self.__step += 1
+        temp_n   = self.__n
         self.__n = find_n(self.__t, self.t_start, self. t_end, self.n_time_slots, self.time_slots)
+        self.__n_ch = temp_n == self.__n
 
     def init_night(self):
         # Reset Nights outputs
@@ -209,8 +200,8 @@ class Scheduler(Data):
         for index, field in enumerate(self.fields):
             alt = self.altitudes[0, index]
             ha  = self.hour_angs[0, index]
-            cov = self.temp_coverage[index]
-            bri = self.sky_brightness[index]
+            cov = self.tonight_telescope.temp_coverage[index]
+            bri = self.tonight_telescope.sky_brightness[index]
             t_last_visit = inf
             t_last_v_last = self.t_last_v_last[index]
             set_t         = self.amass_cstr[1, index]
@@ -428,6 +419,10 @@ class TelescopeState(object):
                                                 ('F6', np.float),
                                                 ('F7', np.float)]) # at most 1200 visits per night
 
+        ''' Unpredictable data '''
+        self.sky_brightness = None
+        self.temp_coverage  = None
+
     def set_param(self, t_start, t_end):
         self.t_start = t_start
         self.t_end   = t_end
@@ -444,10 +439,24 @@ class TelescopeState(object):
     def set_filter(self,the_filter):
         self.the_filter = the_filter
 
-    def update(self, t, n, step, state, the_filter):
+    def set_sky_brightness(self, sky_brightness):     # SkyB is a 1 by n_fields vector, reflects the sky brightness at each field
+        self.sky_brightness = sky_brightness            #must be fed into the algorithm in real time or as prediction in training
+
+    def set_temp_coverage(self, temp_coverage):   # SkyB is a 1 by n_fields vector, reflects the sky brightness at each field
+        self.temp_coverage = temp_coverage          #must be fed into the algorithm in real time or as prediction in training
+
+    def update(self, t, n, n_ch, step, state, the_filter):
         self.set_t_n(t, n, step)
         self.set_state(state)
         self.set_filter(the_filter)
+        if n_ch:
+            self.update_uncertain_data()
+            # Simulation specific: generating sky brightness and cloud coverage data
+            gen_uncertain()
+
+    def update_uncertain_data(self):
+        self.sky_brightness = np.loadtxt("NightDataInLIS/UncertainData/SkyBri.lis", unpack = True)
+        self.temp_coverage  = np.loadtxt("NightDataInLIS/UncertainData/TmpCov.lis", unpack = True)
 
     def watch_fcn(self, watch = True):
         if not watch:
@@ -619,7 +628,6 @@ def find_n(t, t_start, t_end, n_time_slots, time_slots):
     while t > time_slots[n]:
         n += 1
     return n
-
 
 
 class Trainer(object):

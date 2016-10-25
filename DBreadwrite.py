@@ -269,6 +269,9 @@ def DBreadNwrite(key, Date):
 
     return
 
+
+
+
 '''
 Date = ephem.Date('2016/09/01 12:00:00.00') # times are in UT
 DBreadNwrite('w', Date)

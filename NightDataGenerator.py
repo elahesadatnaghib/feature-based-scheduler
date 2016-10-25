@@ -184,3 +184,9 @@ def Night_data(date, site, dt = 10 * ephem.minute, airmassLimit = 1.4, genifexis
             opTLastVis.write("%12.6f \n"%(int(entry[0])))
         # total number of visits of each field before current night observation
         opNvis.write("%12.6f \n"%(entry[1]))
+
+
+# Simulation specific: generating sky brightness and cloud coverage data
+def gen_uncertain():
+    con = lite.connect('Cloud.db')
+    cur = con.cursor()
