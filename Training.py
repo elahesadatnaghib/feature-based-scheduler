@@ -20,7 +20,7 @@ Site.pressure   = 0.
 Site.horizon    = 0.
 F_weight        = np.array([ 1, 1, 1, 1, 1, 1, 1])
 
-preferences     = [1,1,4,1,3,5]
+preferences     = [1,1,4,0,3,10]
 #P1: cost_av  * -1
 #P2: slew_avg * -1
 #P3: alt_avg  *  1

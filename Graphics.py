@@ -286,7 +286,7 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
 
 n_nights = 10
 
-for i in range(1, n_nights+1):
+for i in range(10, n_nights+1):
 
     Date = ephem.Date('2016/09/{} 12:00:00.00'.format(i)) # times are in UT
 
