@@ -272,6 +272,8 @@ class Scheduler(Data):
     def calculate_f7(self, id):     # normalized sky brightness
         moon_size = 0.5 - np.abs(self.tonight_telescope.moon_phase - 0.5)
         moon_sep = self.moon_sep[self.__n, int(id) -1] / np.pi
+        if moon_sep < 10 * np.pi/180:
+            return inf
         if moon_size <0.2:
             return np.exp(-10 * moon_sep)
         elif moon_size < 0.5:
@@ -296,9 +298,11 @@ class Scheduler(Data):
         t_last_v_last = any_next_state.t_last_v_last
         t_last_visit  = any_next_state.t_last_visit
         t_since_last_v_ton, t_since_last_v_last = self.calculate_f2(t_last_visit, t_last_v_last)
-        alt            = self.calculate_f3(any_next_state.id)
         current_field  = self.tonight_telescope.state.id
-        slew_t         = self.calculate_f1(any_next_state.id)
+        id = any_next_state.id
+        alt            = self.calculate_f3(id)
+        slew_t         = self.calculate_f1(id)  #TODO change the slew_t and bri features from soft to hard variables
+        bri            = self.calculate_f7(id)
         if rise_t != 0 and (any_next_state.rise_t > self.__t or any_next_state.set_t < self.__t):
             return False
         if rise_t == 0 and alt < np.pi/4:
@@ -310,6 +314,8 @@ class Scheduler(Data):
         if current_field == any_next_state.id:
             return False
         if slew_t > 20 *ephem.second and t_since_last_v_ton != inf:
+            return False
+        if bri == inf:
             return False
         any_next_state.set_hard_var(t_since_last_v_ton, t_since_last_v_last, alt)
         return True
@@ -548,11 +554,14 @@ class FiledState(object):
 def calculate_F1(slew_t_to):            # slew time cost 0~2
     return (slew_t_to /ephem.second) /5
 
-def calculate_F2(t_since_last_v_ton):   # night urgency -1~1
-    if t_since_last_v_ton == inf:
+def calculate_F2(t_since_last_v_ton, n_ton_visits, t_to_invis):   # night urgency -1~1
+    if t_since_last_v_ton == inf or n_ton_visits == 2:
         return 5
-    else:
-        return 5 * (1 - np.exp(-1* t_since_last_v_ton / 20 * ephem.minute))
+    elif n_ton_visits == 1:
+        if t_to_invis < 30 * ephem.minute:
+            return 0
+        else:
+            return 5 * (1 - np.exp(-1* t_since_last_v_ton / 20 * ephem.minute))
 
 def calculate_F3(t_since_last_v_last):  # overall urgency 0~1
     if t_since_last_v_last == inf:
@@ -590,7 +599,7 @@ def calculate_cost(possible_next_field, tonight_telescope, f_weight):
     normalized_bri     = possible_next_field.normalized_bri
     F    = np.zeros(7)  # 7 is the number of basis functions
     F[0] = calculate_F1(slew_t_to)
-    F[1] = calculate_F2(t_since_last_v_ton)
+    F[1] = calculate_F2(t_since_last_v_ton, n_ton_visits, t_to_invis)
     F[2] = calculate_F3(t_since_last_v_last)
     F[3] = calculate_F4(alt)
     F[4] = calculate_F5(ha)
@@ -603,7 +612,7 @@ def calculate_cost(possible_next_field, tonight_telescope, f_weight):
 
 def decision_fcn(all_costs, feasibility_idx):
     cost_of_feasibles = [all_costs[i] for i in feasibility_idx]
-    index = np.argmax(cost_of_feasibles)
+    index = np.argmin(cost_of_feasibles)
     next_field_index = feasibility_idx[index]
     minimum_cost  = cost_of_feasibles[index]
     return next_field_index, minimum_cost
@@ -632,7 +641,7 @@ class Trainer(object):
             F      = options.get("F")
             alpha  = 0.1
             gamma  = 0.1
-            delta  = old_cost - (reward + gamma * new_cost)
+            delta  = - old_cost - (reward - gamma * new_cost)
             F_w_correction = alpha * delta * F
 
             return F_w_correction

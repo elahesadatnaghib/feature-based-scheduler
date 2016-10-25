@@ -27,9 +27,9 @@ preferences     = [1,1,10,2,3,10] # mission objective
 #            preferences[5] * No. of single visits * -1
 
 #F_weight : controller parameters
-#F_weight        = np.array([ 1, 1, 1, 1, 1, 1, 1]) * -1  # all one
-#F_weight        = np.array([2, 1, 1, 5, 3, 1, 2])  * -1  # educated guess
-F_weight        = np.array([ 2.90846782,  2.15963323,  9.48473502,  7.74506438,  4.69452669,  5.33303562, 9.55935917]) * -1   # learning result
+#F_weight        = np.array([ 1, 1, 1, 1, 1, 1, 1])  # all one
+#F_weight        = np.array([2, 1, 1, 5, 3, 1, 2])  # educated guess
+F_weight        = np.array([ 2.90846782,  2.15963323,  9.48473502,  7.74506438,  4.69452669,  5.33303562, 9.55935917])    # learning result
 
 # F1: slew time cost 0~2
 # F2: night urgency -1~1
@@ -51,7 +51,7 @@ try:
 except:
     pass
 
-for i in range(1, n_nights+1):
+for i in range(10, n_nights+1):
     Date = ephem.Date('2016/09/{} 12:00:00.00'.format(i)) # times are in UT
     # Delete previous history dependent data
     try:
