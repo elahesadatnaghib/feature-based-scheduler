@@ -38,6 +38,7 @@ F_weight        = np.reshape(np.array([3.82825499,  5.0246024,   0.39586326,  5.
                             5.39172567,  2.48267169,  7.946164,    9.02791093,  0.56115775,  2.45772551,
                             8.26570773,  6.0443104,   1.6260163,   1.03051747,  2.82285864,  7.45984642,
                             3.36747846,  8.52111997]),[8,7])  # learning result
+
 # F1: slew time cost 0~2
 # F2: night urgency -1~1
 # F3: overall urgency 0~1
@@ -58,7 +59,7 @@ try:
 except:
     pass
 
-for i in range(1, n_nights+1):
+for i in range(10, n_nights+1):
     Date = ephem.Date('2016/09/{} 12:00:00.00'.format(i)) # times are in UT
     # Delete previous history dependent data
     try:
