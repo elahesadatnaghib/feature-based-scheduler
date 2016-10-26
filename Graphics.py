@@ -38,19 +38,14 @@ def AltAz2XY(Alt, Az) :
     return Y, -1*X
 
 
-def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LSST Scheduler Simulator.mp4", showClouds = True):
+def Visualize(t_start, t_end, t_start_past, t_end_past, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LSST Scheduler Simulator.mp4", showClouds = True):
 
     # Import data
     All_Fields = np.loadtxt("NightDataInLIS/Constants/fieldID.lis", unpack = True)
     N_Fields   = len(All_Fields[0])
 
-    if showClouds:
-        Time_slots = np.loadtxt("NightDataInLIS/TimeSlots{}.lis".format(int(ephem.julian_date(Date))), unpack = True)
-        All_Cloud_cover = np.loadtxt("NightDataInLIS/Clouds{}.lis".format(int(ephem.julian_date(Date))), unpack = True)
 
-
-
-    #Connect to the History data base
+    #Connect to the data base
     con = lite.connect('FBDE.db')
     cur = con.cursor()
 
@@ -121,15 +116,27 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
     Site.pressure   = 0.
     Site.horizon    = 0.
 
-    #Initialize date and time
-    lastN_start = float(Date) -1;   lastN_end = float(Date)
-    toN_start = float(Date);        toN_end = float(Date) + 1
 
-    cur.execute('SELECT Night_count, T_start, T_end FROM NightSummary WHERE T_start BETWEEN (?) AND (?)',(toN_start, toN_end))
-    row = cur.fetchone()
-    vID = row[0]
-    t_start = row[1]
-    t_end   = row[2]
+
+    cur.execute('SELECT Visit_count, Field_id, ephemDate, Filter, n_ton, n_previous, Temp_coverage FROM Schedule WHERE ephemdate BETWEEN (?) AND (?)',(t_start, t_end))
+    row = cur.fetchall()
+    if row[0][0] is not None:
+        Visit_count   = [x[0] for x in row]
+        Field_id      = [x[1] for x in row]
+        ephemDate     = [x[2] for x in row]
+        Filter        = [x[3] for x in row]
+        n_ton         = [x[4] for x in row]
+        n_previous    = [x[5] for x in row]
+        Temp_coverage = [x[6] for x in row]
+    else:
+        Visit_count   = []
+        Field_id      = []
+        ephemDate     = []
+        Filter        = []
+        n_ton         = []
+        n_previous    = []
+        Temp_coverage = []
+
     t = t_start
 
 
@@ -148,7 +155,7 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
     ax.text(x+ .05, y, 'S-Pole', color = 'white', fontsize = 7)
 
     # Observed last night fields
-    cur.execute('SELECT Field_id FROM Schedule WHERE ephemDate BETWEEN (?) AND (?)',(lastN_start, lastN_end))
+    cur.execute('SELECT Field_id FROM Schedule WHERE ephemDate BETWEEN (?) AND (?)',(t_start_past, t_end_past))
     row = cur.fetchall()
     if row is not None:
         F1 = [x[0] for x in row]
@@ -156,13 +163,8 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
         F1 = []
 
     # Tonight observation path
-    cur.execute('SELECT Field_id, ephemDate FROM Schedule WHERE ephemDate BETWEEN (?) AND (?)',(toN_start, toN_end))
-    row = cur.fetchall()
-    if row[0][0] is not None:
-        F2 = [x[0] for x in row]
-        F2_timing = [x[1] for x in row]
-    else:
-        F2 = []; F2_timing = []
+    F2        = Field_id
+    F2_timing = ephemDate
 
     # Sky elements
     Moon = Circle((0, 0), 0, color = 'silver', zorder = 3)
@@ -176,14 +178,17 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
 
             # Find the index of the current time
             time_index = 0
-            while t > F2_timing[time_index]:
+            temp = F2_timing[0]
+            while t > temp:
                 time_index += 1
-            if showClouds:
-                Slot_n = 0
-                while t > Time_slots[Slot_n]:
-                    Slot_n += 1
+                try:
+                    temp = F2_timing[time_index]
+                except:
+                    time_index -= 1
+                    temp = F2_timing[time_index]
+                    break
 
-            visit_index = 0
+            visit_index   = 0
             visited_field = 0
 
 
@@ -215,8 +220,8 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
                     if Alt > 0:
                         X, Y    = AltAz2XY(Alt,Az)
                         F3_X.append(X); F3_Y.append(Y)
-
-            # F4 coordinates
+            '''
+            # F4 coordinates (temporary coverage)
             if showClouds:
                 for i in range(0,N_Fields):
                     if All_Cloud_cover[i, Slot_n] == 1:
@@ -224,7 +229,7 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
                     if Alt > 0:
                         X, Y    = AltAz2XY(Alt,Az)
                         F4_X.append(X); F4_Y.append(Y)
-
+            '''
 
 
 
@@ -284,16 +289,17 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
 
 
 
-n_nights = 10
 
-for i in range(10, n_nights+1):
 
-    Date = ephem.Date('2016/09/{} 12:00:00.00'.format(i)) # times are in UT
 
-    # Animation specifications
-    FPS = 10            # Frame per second
-    Steps = 100          # Simulation steps
-    MP4_quality = 300   # MP4 size and quality
+t_start_past = ephem.Date('2016/09/2 12:00:00.00')
+t_end_past   = ephem.Date('2016/09/10 12:00:00.00')
+t_start      = ephem.Date('2016/09/10 12:00:00.00')
+t_end        = ephem.Date('2016/09/15 12:00:00.00')
+# Animation specifications
+FPS = 10            # Frame per second
+Steps = 500          # Simulation steps
+MP4_quality = 100   # MP4 size and quality
 
-    PlotID = 1          # 1 for one Plot, 2 for including covering pattern
-    Visualize(Date,1 ,FPS, Steps, MP4_quality, 'Visualizations/LSST1plot{}.mp4'.format(int(ephem.julian_date(Date))), showClouds= False)
+PlotID = 2          # 1 for one Plot, 2 for including covering pattern
+Visualize(t_start, t_end, t_start_past, t_end_past, PlotID ,FPS, Steps, MP4_quality, 'Visualizations/LSST1plot{}.mp4'.format(int(ephem.julian_date(t_start))), showClouds= False)
