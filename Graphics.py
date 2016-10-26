@@ -48,7 +48,16 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
         Time_slots = np.loadtxt("NightDataInLIS/TimeSlots{}.lis".format(int(ephem.julian_date(Date))), unpack = True)
         All_Cloud_cover = np.loadtxt("NightDataInLIS/Clouds{}.lis".format(int(ephem.julian_date(Date))), unpack = True)
 
+    Site            = ephem.Observer()
+    Site.lon        = -1.2320792
+    Site.lat        = -0.517781017
+    Site.elevation  = 2650
+    Site.pressure   = 0.
+    Site.horizon    = 0.
 
+    #Initialize date and time
+    lastN_start = float(Date) -1;   lastN_end = float(Date)
+    toN_start = float(Date);        toN_end = float(Date) + 1
 
     #Connect to the History data base
     con = lite.connect('FBDE.db')
@@ -104,7 +113,25 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
 
     if PlotID == 2:
         freqAX = plt.subplot(212)
-        initHistoricalcoverage = np.zeros(N_Fields) #to be changed
+        cur.execute('SELECT N_visit, Last_visit, Second_last_visit, Third_last_visit, Fourth_last_visit From FieldsStatistics')
+        row = cur.fetchall()
+        N_visit     = [x[0] for x in row]
+        Last_visit   = [x[1] for x in row]
+        Second_last_visit = [x[2] for x in row]
+        Third_last_visit  = [x[3] for x in row]
+        Fourth_last_visit = [x[4] for x in row]
+
+        initHistoricalcoverage = N_visit
+        for index, id in enumerate(All_Fields):
+            if Last_visit[index] > toN_start:
+                initHistoricalcoverage[index] -= 1
+                if Second_last_visit[index] > toN_start:
+                    initHistoricalcoverage[index] -= 1
+                    if Third_last_visit > toN_start:
+                        initHistoricalcoverage[index] -= 1
+
+
+
         covering,current_cover = freqAX.plot(All_Fields[0],initHistoricalcoverage,'-',[],[],'o')
 
         freqAX.set_xlim(0,N_Fields)
@@ -113,17 +140,6 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
         current_cover.set_color('red');     current_cover.set_markersize(6)
 
 
-
-    Site            = ephem.Observer()
-    Site.lon        = -1.2320792
-    Site.lat        = -0.517781017
-    Site.elevation  = 2650
-    Site.pressure   = 0.
-    Site.horizon    = 0.
-
-    #Initialize date and time
-    lastN_start = float(Date) -1;   lastN_end = float(Date)
-    toN_start = float(Date);        toN_end = float(Date) + 1
 
     cur.execute('SELECT Night_count, T_start, T_end FROM NightSummary WHERE T_start BETWEEN (?) AND (?)',(toN_start, toN_end))
     row = cur.fetchone()
@@ -134,7 +150,6 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
 
 
     # Figure labels and fixed elements
-
     Phi = np.arange(0, 2* np.pi, 0.05)
     Horizon.set_data(1.01*np.cos(Phi), 1.01*np.sin(Phi))
     ax.text(-1.3, 0, 'West', color = 'white', fontsize = 7)
@@ -259,8 +274,9 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
                         Historicalcoverage[i -1] += 1
                     else:
                         break
-                current_cover.set_data(visited_field -1,1)
-                covering.set_data(All_Fields[0],Historicalcoverage)
+                tot = Historicalcoverage + initHistoricalcoverage
+                current_cover.set_data(visited_field -1,tot[visited_field -1])
+                covering.set_data(All_Fields[0], tot)
 
             #Observation statistics
             leg = plt.legend([Observed_lastN, Obseved_toN],
@@ -284,16 +300,13 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
 
 
 
-n_nights = 10
+'''
+Date = ephem.Date('2016/09/3 12:00:00.00') # times are in UT
+# Animation specifications
+FPS = 10            # Frame per second
+Steps = 100          # Simulation steps
+MP4_quality = 300   # MP4 size and quality
 
-for i in range(10, n_nights+1):
-
-    Date = ephem.Date('2016/09/{} 12:00:00.00'.format(i)) # times are in UT
-
-    # Animation specifications
-    FPS = 10            # Frame per second
-    Steps = 100          # Simulation steps
-    MP4_quality = 300   # MP4 size and quality
-
-    PlotID = 1          # 1 for one Plot, 2 for including covering pattern
-    Visualize(Date,1 ,FPS, Steps, MP4_quality, 'Visualizations/LSST1plot{}.mp4'.format(int(ephem.julian_date(Date))), showClouds= False)
+PlotID = 2        # 1 for one Plot, 2 for including covering pattern
+Visualize(Date, PlotID ,FPS, Steps, MP4_quality, 'Visualizations/LSST1plot{}.mp4'.format(int(ephem.julian_date(Date))), showClouds= False)
+'''
