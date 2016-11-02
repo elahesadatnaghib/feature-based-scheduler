@@ -547,8 +547,6 @@ class FiledState(object):
         self.cov            = cov
 
 
-
-
 # Basis function calculation
 
 def calculate_F1(slew_t_to):            # slew time cost 0~2
