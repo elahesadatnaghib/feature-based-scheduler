@@ -16,7 +16,7 @@ def Config(Date, **keyword_parameters):
 
     Conf = np.array((visitTime, visitExpTime), dtype = dtype)
 
-    np.save('NightDataInLIS/Config{}.npy'.format(int(ephem.julian_date(Date))), Conf)
+    np.save('NightDataInLIS/Config.npy', Conf)
 
 
 
