@@ -104,8 +104,7 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
     unobserved.set_color('dimgray');        unobserved.set_markersize(star_size)
     Observed_lastN.set_color('blue');       Observed_lastN.set_markersize(star_size)
     Obseved_toN.set_color('chartreuse');    Obseved_toN.set_markersize(star_size +2)
-    Clouds.set_color('white');              Clouds.set_markersize(10)
-
+    Clouds.set_color('white');              Clouds.set_markersize(8)
     ToN_History_line.set_color('orange');   ToN_History_line.set_lw(.5)
     last_10_History_line.set_color('red');  last_10_History_line.set_lw(.5)
 
@@ -234,7 +233,7 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
             # F4 coordinates
             if showClouds:
                 for i in range(0,N_Fields):
-                    if All_Cloud_cover[i, Slot_n] == 1:
+                    if All_Cloud_cover[Slot_n, i] == 2:
                         Alt, Az = Fields_local_coordinate(All_Fields[1,i], All_Fields[2,i], t, Site)
                     if Alt > 0:
                         X, Y    = AltAz2XY(Alt,Az)

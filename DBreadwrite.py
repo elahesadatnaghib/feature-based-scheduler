@@ -211,7 +211,7 @@ def DBreadNwrite(key, Date):
             Last_visit        = Schedule[index]['ephemDate']
             N_visit           = previous_N_visit + 1
             Coadded_depth     = previous_Coadded_depth + 0 # temporarily
-            Avg_cost          = ((previous_Avg_cost * previous_N_visit) + Schedule[index]['Cost'])/N_visit
+            Avg_cost          = 0#((previous_Avg_cost * previous_N_visit) + Schedule[index]['Cost'])/N_visit
             Avg_slew_t        = ((previous_Avg_slew_t * previous_N_visit) + Schedule[index]['Slew_t'])/N_visit
             Avg_alt           = ((previous_Avg_alt * previous_N_visit) + Schedule[index]['Alt'])/N_visit
             Avg_ha            = ((previous_Avg_ha * previous_N_visit) + Schedule[index]['HA'])/N_visit

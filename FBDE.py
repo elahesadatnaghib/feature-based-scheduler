@@ -17,6 +17,7 @@ AllF = np.zeros((4206,7))
 
 class Data(object):
     def __init__(self, date, site):
+        self.temp = 0
         self.Date   = date
         self.Site   = site
 
@@ -47,7 +48,11 @@ class Data(object):
 
         ''' Unpredictable data '''
         self.sky_brightness = np.zeros(len(self.all_fields[0]), dtype= 'int')   #!!!!! temporarily!!!!!!!!    # current sky brightness
-        self.temp_coverage  = np.zeros(len(self.all_fields[0]), dtype= 'int')   #!!!!! temporarily!!!!!!!!    # temporary 0/1 coverage of the sky including clouds
+        try:
+            self.temp_coverage  = np.loadtxt("NightDataInLIS/Clouds{}.lis".format(int(ephem.julian_date(self.Date))), unpack = True)    # temporary 0/1 coverage of the sky including clouds
+        except:
+            print('No cloud data')
+            self.temp_coverage = np.zeros([self.n_time_slots,self.n_all_fields])
         # TODO Add update module for live sky brightness and temporary coverage updates
         #print('\nData imported correctly') # data validity check should be added
 
@@ -60,7 +65,7 @@ class Data(object):
 
 
 class Scheduler(Data):
-    def __init__(self, date, site, f_weight, preferences, manual_init_state = 0, exposure_t = 30 * ephem.second, visit_window = [15*ephem.minute, 30*ephem.minute], max_n_ton_visits =3, micro_train = False):
+    def __init__(self, date, site, f_weight, preferences, manual_init_state = 0, exposure_t = 34 * ephem.second, visit_window = [15*ephem.minute, 30*ephem.minute], max_n_ton_visits =3, micro_train = False):
         super(Scheduler, self).__init__(date, site)
 
         # create telescope
@@ -117,18 +122,10 @@ class Scheduler(Data):
     def schedule(self):
         self.init_night()  #Initialize observation
         while self.__t < self.t_end:
-            feasibility_idx = []
-            all_costs       = np.ones(self.n_all_fields) * inf
-            for field, index in zip(self.fields, range(self.n_all_fields)):
-                if  self.is_feasible(field): # update features of the feasible fields
-                    feasibility_idx.append(index)
-                    self.update_field(field)
-                    all_costs[index] = calculate_cost(field, self.tonight_telescope, self.f_weight)
+            all_costs, feasibility_idx = self.feasible_set()
             next_field_index, self.minimum_cost = decision_fcn(all_costs, feasibility_idx)
             self.next_field = self.fields[next_field_index]
             dt = self.next_field.slew_t_to + self.exposure_t
-            if len(feasibility_idx) <= 10:
-                print(len(feasibility_idx))
             self.clock(dt)
             # update next field visit variables
             self.next_field.update_visit_var(self.__t)
@@ -162,8 +159,7 @@ class Scheduler(Data):
         ha    = self.calculate_f4(id)
         t_to_invis = self.calculate_f6(field.set_t)
         normalized_bri = self.calculate_f7(id)
-        cov = self.calculate_f10(id)
-        field.set_soft_var(slew_t_to, ha, t_to_invis, normalized_bri, cov)
+        field.set_soft_var(slew_t_to, ha, t_to_invis, normalized_bri)
 
 
     def clock(self, dt, reset = False):
@@ -211,8 +207,8 @@ class Scheduler(Data):
         for index, field in enumerate(self.fields):
             alt = self.altitudes[0, index]
             ha  = self.hour_angs[0, index]
-            cov = self.temp_coverage[index]
-            bri = self.sky_brightness[index]
+            cov = self.temp_coverage[0, index]
+            bri = self.sky_brightness[ index]
             t_last_visit = inf
             t_last_v_last = self.t_last_v_last[index]
             set_t         = self.amass_cstr[1, index]
@@ -270,27 +266,24 @@ class Scheduler(Data):
             return set_t - self.__t
 
     def calculate_f7(self, id):     # normalized sky brightness
-        moon_size = 0.5 - np.abs(self.tonight_telescope.moon_phase - 0.5)
-        moon_sep = self.moon_sep[self.__n, int(id) -1] / np.pi
-        if moon_sep < 10 * np.pi/180:
-            return inf
-        if moon_size <0.2:
-            return np.exp(-10 * moon_sep)
-        elif moon_size < 0.5:
-            return np.exp(-2 * moon_sep)
-        elif moon_size < 0.8:
-            return np.exp(-1 * moon_sep)
-        else:
-            return 1 - 0.5 * moon_sep
+        return self.sky_brightness[int(id) -1]
 
     def calculate_f8(self, id):     # visibility for rest of the year
         return 0
     def calculate_f9(self, id):     # science program identifier
         return 0
     def calculate_f10(self, id):    # 0/1 temporary coverage
-        return 0
+        return  self.temp_coverage[self.__n, int(id) -1]
 
-
+    def feasible_set(self):
+        feasibility_idx = []
+        all_costs       = np.ones(self.n_all_fields) * inf
+        for index, field in enumerate(self.fields):
+            if  self.is_feasible(field): # update features of the feasible fields
+                feasibility_idx.append(index)
+                self.update_field(field)
+                all_costs[index] = calculate_cost(field, self.tonight_telescope, self.f_weight)
+        return all_costs, feasibility_idx
 
     def is_feasible(self, any_next_state):
         rise_t         = any_next_state.rise_t
@@ -299,10 +292,17 @@ class Scheduler(Data):
         t_last_visit  = any_next_state.t_last_visit
         t_since_last_v_ton, t_since_last_v_last = self.calculate_f2(t_last_visit, t_last_v_last)
         current_field  = self.tonight_telescope.state.id
+        cov = self.calculate_f10(current_field)
         id = any_next_state.id
         alt            = self.calculate_f3(id)
         slew_t         = self.calculate_f1(id)  #TODO change the slew_t and bri features from soft to hard variables
         bri            = self.calculate_f7(id)
+
+        if cov == 2:
+            print('covered by clouds')
+            return False
+        if alt < 0:
+            return False
         if rise_t != 0 and (any_next_state.rise_t > self.__t or any_next_state.set_t < self.__t):
             return False
         if rise_t == 0 and alt < np.pi/4:
@@ -311,13 +311,14 @@ class Scheduler(Data):
             return False
         if n_ton_visits >= self.max_n_ton_visits:
             return False
-        if current_field == any_next_state.id:
-            return False
+
         if slew_t > 20 *ephem.second and t_since_last_v_ton != inf:
             return False
         if bri == inf:
             return False
-        any_next_state.set_hard_var(t_since_last_v_ton, t_since_last_v_last, alt)
+        if current_field == any_next_state.id:
+            return False
+        any_next_state.set_hard_var(t_since_last_v_ton, t_since_last_v_last, alt, cov)
         return True
 
     def record_visit(self):
@@ -534,17 +535,17 @@ class FiledState(object):
         self.t_last_visit = t_new_visit
 
     # variables can be group as updated before feasibility check(hard) of after(soft)
-    def set_hard_var(self, t_since_last_v, t_since_last_v_last, alt):
+    def set_hard_var(self, t_since_last_v, t_since_last_v_last, alt, cov):
         self.t_since_last_v_ton  = t_since_last_v
         self.t_since_last_v_last = t_since_last_v_last
         self.alt                 = alt
+        self.cov                 = cov
 
-    def set_soft_var(self, slew_t_to, ha, t_to_invis, normalized_bri, cov):
+    def set_soft_var(self, slew_t_to, ha, t_to_invis, normalized_bri):
         self.slew_t_to      = slew_t_to
         self.ha             = ha
         self.t_to_invis     = t_to_invis
         self.normalized_bri = normalized_bri
-        self.cov            = cov
 
 
 # Basis function calculation
