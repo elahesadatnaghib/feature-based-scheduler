@@ -51,7 +51,7 @@ F_weight        = np.reshape(np.array([ 4.20719114,  7.30495229,  3.22797504,  7
 # immediate reward reward = F_weight[0] * F1 + F_weight[1] * F2 + F_weight[2] * F3 + F_weight[3] * F4 + F_weight[4] * F5 + F_weight[5] * F6 + F_weight[6] * F7
 s = time.time()
 
-n_nights = 5 # number of the nights to be scheduled starting from 1st Sep. 2016
+n_nights = 37 # number of the nights to be scheduled starting from 1st Sep. 2016
 
 
 # Delete previous database
@@ -60,8 +60,8 @@ try:
 except:
     pass
 
-for i in range(13, n_nights+13):
-    Date = ephem.Date('2015/07/{} 12:00:00.00'.format(i)) # times are in UT
+for i in range (n_nights):
+    Date = ephem.Date('2015/06/28 12:00:00.00') + i # times are in UT
     # Delete previous history dependent data
     try:
         os.remove('NightDataInLIS/t_last_visit{}.lis'.format(int(ephem.julian_date(Date))))
