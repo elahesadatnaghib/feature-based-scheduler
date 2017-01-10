@@ -38,7 +38,7 @@ def AltAz2XY(Alt, Az) :
     return Y, -1*X
 
 
-def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LSST Scheduler Simulator.mp4", showClouds = True):
+def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LSST Scheduler Simulator.mp4", showClouds = True, db = 'FBDE.db'):
 
     # Import data
     All_Fields = np.loadtxt("NightDataInLIS/Constants/fieldID.lis", unpack = True)
@@ -60,7 +60,7 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
     toN_start = float(Date);        toN_end = float(Date) + 1
 
     #Connect to the History data base
-    con = lite.connect('FBDE.db')
+    con = lite.connect(db)
     cur = con.cursor()
 
     # Prepare to save in MP4 format
@@ -104,7 +104,7 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
     unobserved.set_color('dimgray');        unobserved.set_markersize(star_size)
     Observed_lastN.set_color('blue');       Observed_lastN.set_markersize(star_size)
     Obseved_toN.set_color('chartreuse');    Obseved_toN.set_markersize(star_size +2)
-    Clouds.set_color('white');              Clouds.set_markersize(8)
+    Clouds.set_markerfacecolor('white');              Clouds.set_markersize(8);    Clouds.set_alpha(0.5); Clouds.set_markeredgecolor('none')
     ToN_History_line.set_color('orange');   ToN_History_line.set_lw(.5)
     last_10_History_line.set_color('red');  last_10_History_line.set_lw(.5)
 
@@ -181,7 +181,7 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
     # Sky elements
     Moon = Circle((0, 0), 0, color = 'silver', zorder = 3)
     ax.add_patch(Moon)
-    Moon_text = ax.text([], [], 'Moon', color = 'white', fontsize = 7)
+    Moon_text = ax.text([], [], 'Moon', color = 'red', fontsize = 7)
 
 
     with writer.saving(Fig, Name, MP4_quality) :
@@ -233,7 +233,7 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
             # F4 coordinates
             if showClouds:
                 for i in range(0,N_Fields):
-                    if All_Cloud_cover[Slot_n, i] == 2:
+                    if All_Cloud_cover[Slot_n, i] == 1 or All_Cloud_cover[Slot_n, i] == 2:# or All_Cloud_cover[Slot_n, i] == -1:
                         Alt, Az = Fields_local_coordinate(All_Fields[1,i], All_Fields[2,i], t, Site)
                     if Alt > 0:
                         X, Y    = AltAz2XY(Alt,Az)
@@ -294,18 +294,18 @@ def Visualize(Date, PlotID = 1,FPS = 15,Steps = 20,MP4_quality = 300, Name = "LS
             else:
                 print('100 %')
             '''
+
             #Save current frame
             writer.grab_frame()
 
 
-
 '''
-Date = ephem.Date('2016/09/3 12:00:00.00') # times are in UT
+Date = ephem.Date('2015/07/1 12:00:00.00') # times are in UT
 # Animation specifications
 FPS = 10            # Frame per second
-Steps = 100          # Simulation steps
+Steps = 1000          # Simulation steps
 MP4_quality = 300   # MP4 size and quality
 
-PlotID = 2        # 1 for one Plot, 2 for including covering pattern
-Visualize(Date, PlotID ,FPS, Steps, MP4_quality, 'Visualizations/LSST1plot{}.mp4'.format(int(ephem.julian_date(Date))), showClouds= False)
+PlotID = 1        # 1 for one Plot, 2 for including covering pattern
+Visualize(Date, PlotID ,FPS, Steps, MP4_quality, 'Visualizations/LSSTplot{}.mp4'.format(int(ephem.julian_date(Date))), showClouds= True)
 '''

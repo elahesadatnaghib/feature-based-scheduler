@@ -4,6 +4,7 @@ __author__ = 'Elahe'
 import sqlite3 as lite
 import numpy as np
 import ephem
+import json
 
 
 ''' Connect to the FBDE data base '''
@@ -268,8 +269,7 @@ def DBreadNwrite(key, Date):
 
 
     return
-
 '''
-Date = ephem.Date('2016/09/01 12:00:00.00') # times are in UT
+Date = ephem.Date('2015/06/30 12:00:00.00') # times are in UT
 DBreadNwrite('w', Date)
 '''

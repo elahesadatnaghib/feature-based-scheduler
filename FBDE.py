@@ -50,6 +50,8 @@ class Data(object):
         self.sky_brightness = np.zeros(len(self.all_fields[0]), dtype= 'int')   #!!!!! temporarily!!!!!!!!    # current sky brightness
         try:
             self.temp_coverage  = np.loadtxt("NightDataInLIS/Clouds{}.lis".format(int(ephem.julian_date(self.Date))), unpack = True)    # temporary 0/1 coverage of the sky including clouds
+            #self.temp_coverage[31:-2,:]  = np.zeros(np.shape(self.temp_coverage[31:-2,:]))
+
         except:
             print('No cloud data')
             self.temp_coverage = np.zeros([self.n_time_slots,self.n_all_fields])
@@ -266,7 +268,11 @@ class Scheduler(Data):
             return set_t - self.__t
 
     def calculate_f7(self, id):     # normalized sky brightness
-        return self.sky_brightness[int(id) -1]
+        if self.moon_sep[self.__n, int(id -1)] < 30 * np.pi/180:
+            bri = inf
+        else:
+            bri = 0
+        return bri#self.sky_brightness[int(id) -1]
 
     def calculate_f8(self, id):     # visibility for rest of the year
         return 0
@@ -279,13 +285,28 @@ class Scheduler(Data):
         feasibility_idx = []
         all_costs       = np.ones(self.n_all_fields) * inf
         for index, field in enumerate(self.fields):
-            if  self.is_feasible(field): # update features of the feasible fields
+            if  self.is_feasible(field, level = 1): # update features of the feasible fields
                 feasibility_idx.append(index)
                 self.update_field(field)
                 all_costs[index] = calculate_cost(field, self.tonight_telescope, self.f_weight)
+        if len(feasibility_idx) < 10:
+            feasibility_idx = []
+            all_costs       = np.ones(self.n_all_fields) * inf
+            for index, field in enumerate(self.fields):
+                if  self.is_feasible(field, level = 2): # update features of the feasible fields
+                    feasibility_idx.append(index)
+                    self.update_field(field)
+                    all_costs[index] = calculate_cost(field, self.tonight_telescope, self.f_weight)
+
         return all_costs, feasibility_idx
 
-    def is_feasible(self, any_next_state):
+    def is_feasible(self, any_next_state, level = 1):
+        if level == 1:
+            return self.is_feasible_level1(any_next_state)
+        if level ==2:
+            return self.is_feasible_level2(any_next_state)
+
+    def is_feasible_level1(self, any_next_state):
         rise_t         = any_next_state.rise_t
         n_ton_visits = any_next_state.n_ton_visits
         t_last_v_last = any_next_state.t_last_v_last
@@ -298,8 +319,7 @@ class Scheduler(Data):
         slew_t         = self.calculate_f1(id)  #TODO change the slew_t and bri features from soft to hard variables
         bri            = self.calculate_f7(id)
 
-        if cov == 2:
-            print('covered by clouds')
+        if cov == 1 :
             return False
         if alt < 0:
             return False
@@ -311,9 +331,39 @@ class Scheduler(Data):
             return False
         if n_ton_visits >= self.max_n_ton_visits:
             return False
-
-        if slew_t > 20 *ephem.second and t_since_last_v_ton != inf:
+        #if slew_t > 20 *ephem.second and t_since_last_v_ton != inf:
+         #   return False
+        if bri == inf:
             return False
+        if current_field == any_next_state.id:
+            return False
+        any_next_state.set_hard_var(t_since_last_v_ton, t_since_last_v_last, alt, cov)
+        return True
+
+    def is_feasible_level2(self, any_next_state):
+        rise_t         = any_next_state.rise_t
+        n_ton_visits = any_next_state.n_ton_visits
+        t_last_v_last = any_next_state.t_last_v_last
+        t_last_visit  = any_next_state.t_last_visit
+        t_since_last_v_ton, t_since_last_v_last = self.calculate_f2(t_last_visit, t_last_v_last)
+        current_field  = self.tonight_telescope.state.id
+        cov = self.calculate_f10(current_field)
+        id = any_next_state.id
+        alt            = self.calculate_f3(id)
+        slew_t         = self.calculate_f1(id)  #TODO change the slew_t and bri features from soft to hard variables
+        bri            = self.calculate_f7(id)
+        if alt < 0:
+            return False
+        if rise_t != 0 and (any_next_state.rise_t > self.__t or any_next_state.set_t < self.__t):
+            return False
+        if rise_t == 0 and alt < np.pi/4:
+            return False
+        if t_since_last_v_ton != inf and (t_since_last_v_ton < self.visit_window[0] or t_since_last_v_ton > self.visit_window[1]):
+            return False
+        if n_ton_visits >= self.max_n_ton_visits:
+            return False
+        #if slew_t > 20 *ephem.second and t_since_last_v_ton != inf:
+         #   return False
         if bri == inf:
             return False
         if current_field == any_next_state.id:
@@ -336,7 +386,17 @@ class Scheduler(Data):
         self.__NightOutput[self.__step]['t_to_invis'] = self.tonight_telescope.state.t_to_invis
         self.__NightOutput[self.__step]['Sky_bri'] = self.tonight_telescope.state.normalized_bri
         self.__NightOutput[self.__step]['Temp_coverage']= self.tonight_telescope.state.cov
-        self.op_log.write(json.dumps(self.__NightOutput[self.__step].tolist())+"\n")
+        '''
+        self.__NightSummary[0] = self.t_start
+        self.__NightSummary[1] = self.t_end
+        self.__NightSummary[2] = self.init_id
+        np.save("Output/Schedule{}.npy".format(int(ephem.julian_date(self.Date))), self.__NightOutput)
+        np.save("Output/Summary{}.npy".format(int(ephem.julian_date(self.Date))), self.__NightSummary)
+        np.save("Output/Watch{}.npy".format(int(ephem.julian_date(self.Date))), self.tonight_telescope.watch)
+        '''
+        #self.op_log.write(json.dumps(self.__NightOutput[self.__step].tolist())+"\n")
+        [self.op_log.write("%12.6f "%(h)) for h in self.__NightOutput[self.__step]]
+        self.op_log.write("\n")
 
     def record_night(self):
         self.__NightSummary[0] = self.t_start
@@ -578,7 +638,7 @@ def calculate_F6(coadded_depth):        # coadded depth cost 0~1
     return coadded_depth
 
 def calculate_F7(normalized_bri):       # normalized brightness 0~1
-    return normalized_bri
+    return 0
 
 # cost function
 
